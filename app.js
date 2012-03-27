@@ -98,9 +98,7 @@ function connected(socket) {
     is.join(data);
   });
   socket.on('disconnect', function() {
-    is.disconnect('leaving', function() {
-      is = null;
-    });
+    is.disconnect('leaving');
   });
 }
 
