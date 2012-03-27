@@ -1,1 +1,7 @@
 node.js to IRC gateway
+
+Dependencies:
+npm install socket.io
+npm install irc
+
+Also, download jquery.terminal from http://terminal.jcubic.pl/ and put it and its CSS into files/inc
