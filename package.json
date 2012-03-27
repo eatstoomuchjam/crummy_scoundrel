@@ -1,0 +1,8 @@
+{
+  "name":"crummy_scoundrel",
+  "version":"0.0.1",
+  "dependencies":{
+    "socket.io":"",
+    "irc":""
+  }
+}

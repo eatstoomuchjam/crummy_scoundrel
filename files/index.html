@@ -1,0 +1,165 @@
+<html>
+<head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script src="/inc/jquery.terminal-0.4.11.min.js"></script>
+<link href="/inc/jquery.terminal.css" rel="stylesheet"/>
+<title>Crummy Scoundrel</title>
+</head>
+<body>
+<div id="terminal"></div>
+<script language="javascript">
+  function getParameterByName(name) {
+    var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+  }
+  var nickName = getParameterByName('nickName');
+  var serverName = getParameterByName('serverName');
+  var channels = getParameterByName('channels');
+  var hostName = window.location.hostname;
+  var hostPort = window.location.port;
+  var defaultChannel = '';
+  var actionRegex = /^ACTION /;
+
+  var channelsTemp = channels.split(',');
+  var useChannels = [];
+  channelsTemp.forEach(function(channel) {
+    useChannels.push('#' + channel);
+  });
+  useChannels ? defaultChannel = useChannels[0] : defaultChannel = '';
+
+  var socket=io.connect('http://' + hostName + ':' + hostPort);
+  var term = {};
+
+  socket.on('connect', function() {
+    socket.emit('login', { nickName: nickName, serverName: serverName, channels: useChannels });
+    console.log('nickName: ' + nickName);
+    console.log('serverName: ' + serverName);
+    console.log('channels: ' + useChannels);
+  });
+  socket.on('message', function(data) {
+    if(data.to && !data.to.match(/^#/)) {
+      term.echo(data.from + '->' + data.to + ': ' + data.message);
+    } else {
+      if(data.message.match(actionRegex)) {   
+        term.echo('(' + data.to + ') ' + data.from + ' --> ' + data.message.replace(actionRegex, ''));
+      } else {
+        term.echo('(' + data.to + ') ' + data.from + ': ' + data.message);
+      }
+    }
+  })
+  socket.on('motd', function(data) {
+    term.echo(data);
+  });
+  socket.on('join', function(data) {
+    term.echo(data.nick + ' joined ' + data.channel);
+  });
+  socket.on('registered', function(data) {
+    term.echo(data);
+  });
+  socket.on('part', function(data) {
+    term.echo(data.nick + ' parted ' + data.channel + ' (' + data.reason + ')');
+  });
+  socket.on('nick', function(data) {
+    term.echo(data.oldnick + ' is now known as ' + data.newnick);
+  });
+  socket.on('quit', function(data) {
+    term.echo(data.nick + ' parted ' + data.channel + ' (' + data.reason + ')');
+  });
+  socket.on('channellist', function(data) {
+    data.forEach(function(channel) {
+      term.echo('channel:' + channel.name + ' / ' + channel.users.toString() + ' users / ' + channel.topic);
+    });
+  });
+  socket.on('names', function(data) {
+    var nameList = '';
+    Object.keys(data.names).forEach(function(name) {
+      nameList = nameList + data.names[name] + name + ' ';
+    });
+    term.echo('channel:' + data.channel + ' members: ' + nameList);
+  });
+  socket.on('error', function(data) {
+    term.echo('error received');
+    data.args.forEach(function(arg) {
+      term.echo(arg);
+    });
+    console.log(data);
+  });
+  
+  term=$('#terminal').terminal(function(command, terminal) {
+    if(command.match(/^\//)) {
+      command = command.split(' ');
+      switch(command[0]) {
+        case "/list":
+          socket.emit('list', command);
+          break;
+        case "/names":
+          channels = command[1];
+          if(!channels) { channels = defaultChannel; }
+          socket.emit('names', channels);
+          break;
+        case "/join":
+          if(command[1]) {
+            socket.emit('join', command[1]);
+          } else {
+            term.echo('Please specify a channel');
+          }
+          break;
+        case "/part":
+          if(command[1]) {
+            socket.emit('part', command[1]);
+          } else { 
+            term.echo('Please specify a channel');
+          }
+          break;
+        case "/nick":
+          if(command[1]) {
+            socket.emit('nick', command[1]);
+          } else {
+            term.echo('Please specify a new nickname');
+          }
+          break;
+        case "/msg":
+          if(command[2]) {
+            socket.emit('msg', { user: command[1], message: command.splice(2).join(' ') });
+          } else {
+            term.echo('Please specify a recipient and something to say');
+          }
+          break;
+        case "/me": 
+          if(command[1]) {
+            if(defaultChannel) {
+              socket.emit('message', { channel: defaultChannel, message: 'ACTION ' + command.splice(1).join(' ') });
+            } else {
+              term.echo('Please join at least one channel first.');
+            }
+          } else {
+            term.echo('Please specify an action');
+          }
+          break;
+        case "/default":
+          if(command[1]) {
+            defaultChannel = command[1];
+            console.log('setting default channel to ' + defaultChannel ) 
+            term.set_prompt('(' + defaultChannel + ') ' + nickName + '>');
+          } else {
+            term.echo('Cannot set default channel to empty');
+          } 
+          break;
+      }
+    } else {
+      if(defaultChannel) {
+        socket.emit('message', { channel: defaultChannel, message: command });
+      } else {
+        term.echo('Please join at least one channel first.');
+      }
+    }
+  }, {
+    width: window.innerWidth - 40,
+    height: window.innerHeight - 40,
+    prompt: '(' + defaultChannel + ') ' + nickName + '>',
+    greetings: null
+  });
+</script>
+</body>
+</html>
