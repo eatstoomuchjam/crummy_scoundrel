@@ -1,2 +1,3 @@
 *.swp
 files/inc
+node_modules/
