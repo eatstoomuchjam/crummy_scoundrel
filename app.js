@@ -22,7 +22,7 @@ function configureIO(socket) {
   socket.set('transports', [
     'xhr-polling'
   ]);
-  socket.loglevel = 5;
+  socket.loglevel = 1;
   socket.enable('browser client minification');
   socket.enable('broser client gzip');
 }
@@ -39,42 +39,46 @@ function connected(socket) {
   var is = {};
 
   socket.on('login', function(data) {
-    is = new irc.Client(data.serverName, data.nickName, {
-      channels: data.channels,
-      autoRejoin: true,
-      autoConnect: true,
-      floodProtection: true
-    });
-    is.addListener('message', function(from, to, message) {
-      socket.emit('message', { from: from, to: to, message: message });
-    });
-    is.addListener('registered', function(message) {
-      socket.emit('registered', message);
-    });
-    is.addListener('motd', function(message) {
-      socket.emit('motd', message);
-    });
-    is.addListener('join', function(channel, nick, message) {
-      socket.emit('join', { channel: channel, nick: nick, message: message });
-    });
-    is.addListener('channellist', function(channels) {
-      socket.emit('channellist', channels);
-    });
-    is.addListener('names', function(channel, names) {
-      socket.emit('names', { channel: channel, names: names });
-    });
-    is.addListener('nick', function(oldnick, newnick, channel, message) {
-      socket.emit('nick', { oldnick: oldnick, newnick: newnick, channel: channel, message: message });
-    });
-    is.addListener('part', function(channel, nick, reason, message) { 
-      socket.emit('part', { channel: channel, nick: nick, reason: reason, message: message });
-    });
-    is.addListener('quit', function(nick, reason, channel, message) { 
-      socket.emit('quit', { channel: channel, nick: nick, reason: reason, message: message });
-    });
-    is.addListener('error', function(err) {
-      socket.emit('error', err);
-    });
+    try {
+      is = new irc.Client(data.serverName, data.nickName, {
+        channels: data.channels,
+        autoRejoin: true,
+        autoConnect: true,
+        floodProtection: true
+      });
+      is.addListener('message', function(from, to, message) {
+        socket.emit('message', { from: from, to: to, message: message });
+      });
+      is.addListener('registered', function(message) {
+        socket.emit('registered', message);
+      });
+      is.addListener('motd', function(message) {
+        socket.emit('motd', message);
+      });
+      is.addListener('join', function(channel, nick, message) {
+        socket.emit('join', { channel: channel, nick: nick, message: message });
+      });
+      is.addListener('channellist', function(channels) {
+        socket.emit('channellist', channels);
+      });
+      is.addListener('names', function(channel, names) {
+        socket.emit('names', { channel: channel, names: names });
+      });
+      is.addListener('nick', function(oldnick, newnick, channel, message) {
+        socket.emit('nick', { oldnick: oldnick, newnick: newnick, channel: channel, message: message });
+      });
+      is.addListener('part', function(channel, nick, reason, message) { 
+        socket.emit('part', { channel: channel, nick: nick, reason: reason, message: message });
+      });
+      is.addListener('quit', function(nick, reason, channel, message) { 
+        socket.emit('quit', { channel: channel, nick: nick, reason: reason, message: message });
+      });
+      is.addListener('error', function(err) {
+        socket.emit('error', err);
+      });
+    } catch(err) {
+      console.log(err);
+    }
   });
   socket.on('message', function(data) {
     is.say(data.channel, data.message);
